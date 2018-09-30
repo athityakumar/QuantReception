@@ -19,7 +19,8 @@ for line in testing_data.split("\n")[:-1]:
     columns = line.rstrip().split(",")
     testing_df_data.append(columns)
 
-training_df = pd.DataFrame(data=training_df_data[1:6001], columns=training_df_data[0])
+training_df = pd.DataFrame(
+    data=training_df_data[1:6001], columns=training_df_data[0])
 dup_testing_df = pd.DataFrame(
     data=training_df_data[6001:], columns=training_df_data[0])
 testing_df = pd.DataFrame(
@@ -27,18 +28,22 @@ testing_df = pd.DataFrame(
 
 SALUTATIONS = ["Dr.", "Mr.", "Mrs.", "Miss"]
 CLASSES = ["Economy", "Business"]
-CITIES = ['Mumbai', 'Lucknow', 'Kolkata', 'Chennai', 'Delhi', 'Patna', 'Hyderabad']
+CITIES = ['Mumbai', 'Lucknow', 'Kolkata',
+          'Chennai', 'Delhi', 'Patna', 'Hyderabad']
 
 print training_df
 print testing_df
+
 
 def str_to_date(datestr):
     yyyy, mm, dd = datestr.split("-")
     return datetime.date(int(yyyy), int(mm), int(dd))
 
+
 def hot_encode(index, length):
     encoding = [1 if index == i else 0 for i in range(length)]
     return encoding
+
 
 def flatten_list(l):
     flat_list = []
@@ -50,11 +55,10 @@ def flatten_list(l):
             flat_list.append(sublist)
     return flat_list
 
+
 def fetch_feature_map(df):
     feature_data = []
     # feature_columns = ["Salutation", "Age", "Days of booking before journey", "Class", "From", "To", "Day of booking", "Day of journey", "Time"]
-
-
 
     for row in df.iterrows():
         ref = row[1]
@@ -62,23 +66,26 @@ def fetch_feature_map(df):
         salutation_index = SALUTATIONS.index(salutation)
         salutation_index = hot_encode(salutation_index, len(SALUTATIONS))
         age = 2018 - int(ref["Date of Birth"].split("-")[0])
-        n_days = str_to_date(ref["Flight Date"]) - str_to_date(ref["Booking Date"])
-        n_days = 0 if str(n_days) == '0:00:00' else int(str(n_days).split(" ")[0])
+        n_days = str_to_date(ref["Flight Date"]) - \
+            str_to_date(ref["Booking Date"])
+        n_days = 0 if str(n_days) == '0:00:00' else int(
+            str(n_days).split(" ")[0])
         class_index = hot_encode(CLASSES.index(ref["Class"]), len(CLASSES))
         from_index = hot_encode(CITIES.index(ref["From"]), len(CITIES))
         to_index = hot_encode(CITIES.index(ref["To"]), len(CITIES))
         booking_day = hot_encode(str_to_date(ref["Booking Date"]).weekday(), 7)
         journey_day = hot_encode(str_to_date(ref["Flight Date"]).weekday(), 7)
         time = int(ref["Flight Time"].split(":")[0])
-        time = hot_encode(time, 25)
 
         # print flatten_list(list([salutation_index, age, n_days, class_index, from_index, to_index, booking_day, journey_day, time]))
 
-        feature_data.append(flatten_list(list([salutation_index, float(age)/100, n_days/100, class_index, from_index, to_index, booking_day, journey_day, time])))
+        feature_data.append(flatten_list(list([salutation_index, float(
+            age)/100, n_days/100, class_index, from_index, to_index, booking_day, journey_day, float(time)/24])))
         #=> 0.64
 
     feature_df = pd.DataFrame(feature_data)
     return feature_df
+
 
 training_feature_df = fetch_feature_map(training_df)
 dup_testing_feature_df = fetch_feature_map(dup_testing_df)
@@ -106,8 +113,7 @@ testing_feature_df = fetch_feature_map(testing_df)
 # print([p for p in predictions])
 
 from sklearn.metrics import r2_score
-from sklearn import ensemble, svm
-# import xgboost
+import xgboost
 X = training_feature_df
 y = training_df["Fare"]
 
@@ -117,18 +123,21 @@ y2 = dup_testing_df["Fare"]
 X3 = testing_feature_df
 
 
-params = {'n_estimators': 2500, 'max_depth': 4, 'min_samples_split': 2,
-          'learning_rate': 0.05, 'subsample': 0.8, 'loss': 'ls'}
-clf = ensemble.GradientBoostingRegressor(**params)
+clf = XGBClassifier(
+    learning_rate=0.1,
+    n_estimators=1000,
+    max_depth=5,
+    min_child_weight=1,
+    gamma=0,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    objective='binary:logistic',
+    nthread=4,
+    scale_pos_weight=1,
+    seed=27)
 clf.fit(X, y)
-predictions1 = clf.predict(X2)
+predictions = clf.predict(X2)
+print(r2_score(dup_testing_df["Fare"], predictions))
 
-# gamma = 0.11  # 1e5
-# clf = svm.SVR(kernel='rbf', C=1e5, gamma=gamma)
-# clf.fit(X, y)
-# predictions2 = clf.predict(X2)
-# predictions = [(p1+predictions2[i])/2.0 for i, p1 in enumerate(predictions1)]
-print(r2_score(dup_testing_df["Fare"], predictions1))
-
-actual_predictions = clf.predict(X3)
-print([p for p in actual_predictions])
+# actual_predictions = clf.predict(X3)
+# print([p for p in actual_predictions])

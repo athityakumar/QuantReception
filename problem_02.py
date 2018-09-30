@@ -56,7 +56,7 @@ max_xT_wrt_100 = fetch_max_xT_wrt_100(x_multiverse)
 mean_of_xT = mean(xT)
 mean_of_xT_wrt_100 = mean(max_xT_wrt_100)
 
-sigmas = [(i+1)/10.0 for i in range(10)]
+sigmas = [(i+1)/20.0 for i in range(20)]
 mean_of_xT_wrt_100_new = []
 
 for new_sigma in sigmas:
@@ -65,8 +65,8 @@ for new_sigma in sigmas:
     mean_of_xT_wrt_100_new.append(mean(max_xT_wrt_100_new))
 
 derivative = []
-for i in range(9):
+for i in range(19):
     derivative.append((mean_of_xT_wrt_100_new[i+1]-mean_of_xT_wrt_100_new[i])/(sigmas[i+1]-sigmas[i]))
 
-expectation_of_derivative = mean(derivative)
+expectation_of_derivative = max(derivative)
 print [mean_of_xT, mean_of_xT_wrt_100, expectation_of_derivative]
